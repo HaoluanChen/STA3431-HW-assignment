@@ -1,0 +1,479 @@
+---
+title: "Project"
+author: "Haoluan Chen"
+date: "12/10/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+```
+
+
+\newpage
+## Appendices
+
+```{r}
+nine <- c(1, 2, 3, 4, 5, 6, 7 ,8 ,9)
+
+# randomly fill in each sub-grid
+
+subgrid <- function(grid, n){
+  if (n == 1){
+    result <- grid[1:3, 1:3]
+  }
+  if (n==2) {
+    result <-grid[1:3, 4:6]
+  }
+  if (n==3) {
+    result <- grid[1:3, 7:9]
+  }
+  if (n==4) {
+    result <-grid[4:6, 1:3]
+  }
+  if (n==5) {
+    result <-grid[4:6, 4:6]
+  }
+  if (n==6) {
+    result <-grid[4:6, 7:9]
+  }
+  if (n==7) {
+    result <-grid[7:9, 1:3]
+  }
+  if (n==8) {
+    result <-grid[7:9, 4:6]
+  }
+  if (n==9) {
+    result <-grid[7:9, 7:9]
+  }
+  result
+}
+
+fixed <- function(sub){
+  fixed_numbers = c()
+  for (row in 1:3){
+    for (col in 1:3){
+      if (!is.na(as.numeric(sub[row, col]))){
+          fixed_numbers = c(fixed_numbers, as.numeric(sub[row, col]))
+      }
+    }
+  }
+  fixed_numbers
+}
+
+fill_subgrid <- function(sub, candidate){
+  candidate <- sample(candidate, length(candidate), replace = FALSE)
+  for (row in 1:3){
+    for (col in 1:3){
+      if (is.na(as.numeric(sub[row, col]))){
+        sub[row, col] = candidate[1]
+        candidate <- candidate[-1]
+      }
+    }
+  }
+  sub
+}
+
+
+
+# create a function that fill in each of the sub-grid
+# first get all the numbers in the sub-grid, remove them from the candidate, then sample the non-fixed cell
+
+comb_subgrid <- function(list_of_subgrid){
+  row1 <- cbind(list_of_subgrid[[1]], list_of_subgrid[[2]], list_of_subgrid[[3]])
+  row2 <- cbind(list_of_subgrid[[4]], list_of_subgrid[[5]], list_of_subgrid[[6]])
+  row3 <- cbind(list_of_subgrid[[7]], list_of_subgrid[[8]], list_of_subgrid[[9]])
+  output <- rbind(row1, row2, row3)
+  output
+}
+
+
+fill <- function(grid){
+  result <- list()
+  for (i in 1:9){
+    sub <- subgrid(grid, i) # get the subgrid
+    fixed_numbers <- fixed(sub) # find fixed numbers
+    candidate <-  setdiff(nine, fixed_numbers) # find the set difference to get candidate numbers for non-fixed cell
+    candidate <- sample(candidate, length(candidate), replace = FALSE)
+    for (row in 1:3){
+      for (col in 1:3){
+        if (is.na(as.numeric(sub[row, col]))){
+        sub[row, col] = candidate[1]
+        candidate <- candidate[-1]
+        }
+      }
+    }
+  result[[i]] <- sub
+  }
+  comb_subgrid(result)
+}
+
+
+
+
+
+swap <- function(grid, filled_grid){
+  # randomly choose a subgrid
+  grid_num <- sample(1:9, 1)
+  non_fix_index = data.frame(row = c(), col = c())
+  sub <- subgrid(grid, grid_num)
+  for (row in 1:3){
+    for (col in 1:3){
+      if (is.na(as.numeric(sub[row, col]))){
+        non_fix_index <- rbind(non_fix_index,c(row, col) )
+      }
+    }
+  }
+  index <- sample_n(non_fix_index,2)  # index of the two cell to swap
+  sub_filled_grid <- subgrid(filled_grid, grid_num)
+
+  temp <- sub_filled_grid[index[1,1], index[1,2]]
+  sub_filled_grid[index[1,1], index[1,2]] <-  sub_filled_grid[index[2,1], index[2,2]]
+  sub_filled_grid[index[2,1], index[2,2]] <-  temp
+  
+  
+  if (grid_num == 1){
+    filled_grid[1:3, 1:3] <- sub_filled_grid
+  }
+  if (grid_num==2) {
+    filled_grid[1:3, 4:6] <-sub_filled_grid
+  }
+  if (grid_num==3) {
+    filled_grid[1:3, 7:9] <- sub_filled_grid
+  }
+  if (grid_num==4) {
+    filled_grid[4:6, 1:3] <-sub_filled_grid
+  }
+  if (grid_num==5) {
+    filled_grid[4:6, 4:6] <-sub_filled_grid
+  }
+  if (grid_num==6) {
+    filled_grid[4:6, 7:9] <-sub_filled_grid
+  }
+  if (grid_num==7) {
+    filled_grid[7:9, 1:3] <-sub_filled_grid
+  }
+  if (grid_num==8) {
+    filled_grid[7:9, 4:6] <-sub_filled_grid
+  }
+  if (grid_num==9) {
+    filled_grid[7:9, 7:9] <-sub_filled_grid
+  }
+  
+  filled_grid
+
+  # find non-fixed cell indicated by numbers
+}
+
+
+
+
+  
+
+# Calculate the cost function
+# calculate the cost in each row
+# calculate the cost in each col 
+# then sum it up
+rowcost <- function(filled_grid){
+  cost <- 0
+  for (r in 1:9){ # go over each row
+    row <- c()
+    for (i in 1:9){
+      row <- c(row,filled_grid[r,i])
+    }
+    cost = cost + (9 - length(unique(row)))
+  }
+  cost
+}
+
+colcost <- function(filled_grid){
+  cost <- 0
+  for (col in 1:9){
+    cost = cost + (9 - length(unique(filled_grid[,col])))
+  }
+  cost
+}
+
+
+cost <- function(filled_grid){
+  cost = rowcost(filled_grid) + colcost(filled_grid)
+  cost
+}
+
+# swap the non-fixed cell, probably need to keep the orginal table around
+
+```
+
+
+```{r}
+solve_suduko_linear_cooling <- function(M, initialt, grid){
+  iteration <- 0
+  finaltemp <- 0.01
+  costlist <- c()
+  stuck <- 0
+  reheat <- 0
+  solution <- FALSE
+  filled_grid <- fill(grid)
+  tempdiff = (initialt-finaltemp)/M    # for linearcooling
+  t <- initialt
+  
+  for (i in 1:M){
+    iteration = iteration + 1
+    U <- runif(1)
+    t = t - tempdiff # linear cooling
+    precost <- cost(filled_grid)
+    proprosal <- swap(grid, filled_grid)
+    costpro <- cost(proprosal)
+    accept_num = 0
+    if (costpro < precost | U < exp(-(costpro-precost)/t)){
+      filled_grid = proprosal
+      accept_num = accept_num + 1
+      stuck = 0
+    }
+    else {stuck = stuck + 1}
+    
+    if (stuck >= 80){
+      t = t + 1
+      stuck = 0
+      reheat = reheat + 1
+    }
+    if (cost(filled_grid) == 0){
+      solution = T
+      costlist = c(costlist, precost)
+      break
+    }
+    costlist = c(costlist, precost)
+    
+  }
+  
+  cat("Ran simulated annealing with linear cooling for", iteration, "iterations.\n");
+  if (solution){
+      cat("Solution found", ".\n");
+  }
+  else {
+      cat("Solution not found", ".\n");
+      cat("Minimum cost reached", min(costlist), ".\n");
+  }
+  cat("Final temperature is", t, "\n");
+  cat("Number of reheat in the run", reheat, "\n");
+  
+  plot(costlist, main ="Cost for Each Iteration", xlab = "Iteration", ylab = "Cost")
+  filled_grid
+}
+
+
+```
+
+
+```{r}
+solve_suduko_exp_cooling <- function(M, initialt, grid, cooling_rate){
+  iteration <- 0
+  finaltemp <- 0.01
+  costlist <- c()
+  stuck <- 0
+  reheat <- 0
+  solution <- FALSE
+  filled_grid <- fill(grid)
+  t <- initialt
+  
+  for (i in 1:M){
+    iteration = iteration + 1
+    U <- runif(1)
+    t = cooling_rate * t
+    precost <- cost(filled_grid)
+    proprosal <- swap(grid, filled_grid)
+    costpro <- cost(proprosal)
+    accept_num = 0
+    if (costpro < precost | U < exp(-(costpro-precost)/t)){
+      filled_grid = proprosal
+      accept_num = accept_num + 1
+      stuck = 0
+    }
+    else {stuck = stuck + 1}
+    
+    if (stuck >= 80){
+      t = t + 5
+      stuck = 0
+      reheat = reheat + 1
+    }
+    if (cost(filled_grid) == 0){
+      solution = T
+      costlist = c(costlist, precost)
+      break
+    }
+    costlist = c(costlist, precost)
+    
+  }
+  
+  cat("Ran simulated annealing with geometric cooling for", iteration, "iterations.\n");
+  if (solution){
+      cat("Solution found", ".\n");
+  }
+  else {
+      cat("Solution not found", ".\n");
+      cat("Minimum cost reached", min(costlist), ".\n");
+  }
+  cat("Final temperature is", t, "\n");
+  cat("Number of reheat in the run", reheat, "\n");
+  plot(costlist, main ="Cost for Each Iteration", xlab = "Iteration", ylab = "Cost")
+  filled_grid
+}
+```
+
+```{r}
+solve_suduko_log_cooling <- function(M, initialt, grid){
+  iteration <- 0
+  finaltemp <- 0.01
+  costlist <- c()
+  stuck <- 0
+  reheat <- 0
+  solution <- FALSE
+  filled_grid <- fill(grid)
+  t <- initialt
+  
+  for (i in 1:M){
+    iteration = iteration + 1
+    U <- runif(1)
+    t = 2/log(1+i)
+    precost <- cost(filled_grid)
+    proprosal <- swap(grid, filled_grid)
+    costpro <- cost(proprosal)
+    accept_num = 0
+    if (costpro < precost | U < exp(-(costpro-precost)/t)){
+      filled_grid = proprosal
+      accept_num = accept_num + 1
+      stuck = 0
+    }
+    else {stuck = stuck + 1}
+    
+    if (stuck >= 80){
+      t = t + 10
+      stuck = 0
+      reheat = reheat + 1
+    }
+    if (cost(filled_grid) == 0){
+      solution = T
+      costlist = c(costlist, precost)
+      break
+    }
+    costlist = c(costlist, precost)
+    
+  }
+  
+  cat("Ran simulated annealing with logarithmic cooling for", iteration, "iterations.\n");
+  if (solution){
+      cat("Solution found", ".\n");
+  }
+  else {
+      cat("Solution not found", ".\n");
+      cat("Minimum cost reached", min(costlist), ".\n");
+  }
+  cat("Final temperature is", t, "\n");
+  cat("Number of reheat in the run", reheat, "\n");
+  plot(costlist, main ="Cost for Each Iteration", xlab = "Iteration", ylab = "Cost")
+  filled_grid
+}
+```
+
+
+```{r}
+ex1 <- read_excel("ex1.xlsx")
+ex1
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_exp_cooling(10000, 50, ex1, 0.9)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_linear_cooling(10000, 50, ex1)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_log_cooling(10000, 2, ex1)
+}
+```
+
+
+
+```{r}
+ex2 <- read_excel("ex2.xlsx")
+ex2
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_exp_cooling(10000, 50, ex2, 0.9)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_linear_cooling(10000, 50, ex2)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_log_cooling(10000, 50, ex2)
+}
+```
+
+
+
+```{r}
+ex3 <- read_excel("ex3.xlsx")
+ex3
+
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_exp_cooling(10000, 50, ex3, 0.9)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_linear_cooling(10000, 50, ex3)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_log_cooling(10000, 50, ex3)
+}
+```
+
+
+```{r}
+ex4 <- read_excel("ex4.xlsx")
+ex4
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_exp_cooling(10000, 50, ex4, 0.9)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_linear_cooling(10000, 50, ex4)
+}
+```
+
+```{r}
+for (i in 1:10){
+  solve_suduko_log_cooling(10000, 50, ex4)
+}
+```
